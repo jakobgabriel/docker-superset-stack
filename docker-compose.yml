@@ -6,11 +6,6 @@ networks:
   superset:
     driver: bridge
 
-volumes:
-  superset_home:
-  superset_db:
-  local_docker_dir:
-
 services:
   # Build a custom image with MANY database drivers baked-in
   superset-build:
@@ -30,7 +25,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-superset}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-superset}
     volumes:
-      - superset_db:/var/lib/postgresql/data
+      - /volume1/docker/superset/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -71,9 +66,8 @@ services:
       MAPBOX_API_KEY: ${MAPBOX_API_KEY:-}
       SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
     volumes:
-      - superset_home:/app/superset_home
-      - ./superset:/app/pythonpath:ro
-      - ./docker:/app/docker:ro   # optional runtime driver installs
+      - /volume1/docker/superset/home:/app/superset_home
+      - /volume1/docker/superset/pythonpath:/app/pythonpath:ro
     ports:
       - "8088:8088"
     command: [
@@ -181,7 +175,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./assets:/assets:ro
+      - /volume1/docker/superset/assets:/assets:ro
     entrypoint: ["bash","-lc","set -euo pipefail; if [ -f /assets/datasources.zip ]; then echo 'Importing datasources from /assets/datasources.zip'; superset import_datasources -p /assets/datasources.zip -u \"${ADMIN_USERNAME:-admin}\"; elif [ -d /assets/datasources ]; then echo 'Importing datasources from /assets/datasources directory'; superset import_datasources -p /assets/datasources -u \"${ADMIN_USERNAME:-admin}\"; else echo 'No datasources.zip or datasources/ found in ./assets - skipping.'; fi"]
     restart: "no"
     networks:

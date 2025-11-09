@@ -83,3 +83,48 @@ docker compose run --rm import_datasources
 * **SQL Server (pyodbc)**: ensure MS ODBC 18 is installed (see commented lines in Dockerfile).
 * **Alerts/Reports screenshots**: keep `worker_reports` running; Playwright Chromium is pre-installed.
 
+## Persistent Volumes (Synology NAS)
+
+Which data to persist
+- `superset_db` → Postgres metadata (dashboards, charts, users). Container path: `/var/lib/postgresql/data`.
+- `superset_home` → Superset home (uploads, thumbnails, logs). Container path: `/app/superset_home`.
+- `pythonpath` (optional) → Custom config. Place `superset_config.py` here. Container path: `/app/pythonpath`.
+- Redis is ephemeral by default here. Persist only if you need durable cache/results.
+
+Default behavior
+- The compose uses named volumes (`superset_db`, `superset_home`), which Docker stores on the host. This is fine for most setups.
+
+Bind-mount to a Synology shared folder
+1) Create shared folders in DSM, e.g. `/volume1/docker/superset/postgres`, `/volume1/docker/superset/home`, and `/volume1/docker/superset/pythonpath`.
+2) Ensure the user that runs Docker/Portainer has read/write permissions to these folders.
+3) Replace the named volumes with bind mounts in your stack:
+
+```yaml
+services:
+  postgres:
+    volumes:
+      - /volume1/docker/superset/postgres:/var/lib/postgresql/data
+
+  superset:
+    volumes:
+      - /volume1/docker/superset/home:/app/superset_home
+      - /volume1/docker/superset/pythonpath:/app/pythonpath:ro
+    environment:
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+```
+
+Optional: Persist Redis
+- Remove the in-memory flags and mount `/data`:
+
+```yaml
+services:
+  redis:
+    command: ["redis-server"]
+    volumes:
+      - /volume1/docker/superset/redis:/data
+```
+
+Notes
+- The previously declared `local_docker_dir` volume is not used; it can be removed safely.
+- Copy your config file into `/volume1/docker/superset/pythonpath/superset_config.py` (you can use the sample in `superset/superset_config.py` from this repo as a starting point).
+- If deploying via Portainer Stacks, edit the stack → update the `volumes:` entries with your Synology paths → Redeploy.
