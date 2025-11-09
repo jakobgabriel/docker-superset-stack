@@ -64,10 +64,8 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       MAPBOX_API_KEY: ${MAPBOX_API_KEY:-}
-      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
     volumes:
       - /volume1/docker/superset/home:/app/superset_home
-      - /volume1/docker/superset/pythonpath:/app/pythonpath:ro
     ports:
       - "8088:8088"
     command: [
