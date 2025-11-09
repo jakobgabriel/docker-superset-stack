@@ -160,7 +160,7 @@ services:
       - .env
     environment:
       SQLALCHEMY_DATABASE_URI: postgresql+psycopg2://${POSTGRES_USER:-superset}:${POSTGRES_PASSWORD:-superset}@postgres:5432/${POSTGRES_DB:-superset}
-    entrypoint: ["bash", "-lc", "set -euo pipefail; superset db upgrade; superset fab create-admin --username \"${ADMIN_USERNAME:-admin}\" --firstname \"${ADMIN_FIRST_NAME:-Admin}\" --lastname \"${ADMIN_LAST_NAME:-User}\" --email \"${ADMIN_EMAIL:-admin@superset.local}\" --password \"${ADMIN_PASSWORD:-admin}\" --role Admin --exist-ok; superset init; echo 'Superset is initialized.'"]
+    command: ["bash", "-lc", "set -euo pipefail; /app/.venv/bin/superset db upgrade; /app/.venv/bin/superset fab create-admin --username \"${ADMIN_USERNAME:-admin}\" --firstname \"${ADMIN_FIRST_NAME:-Admin}\" --lastname \"${ADMIN_LAST_NAME:-User}\" --email \"${ADMIN_EMAIL:-admin@superset.local}\" --password \"${ADMIN_PASSWORD:-admin}\" --role Admin --exist-ok; /app/.venv/bin/superset init; echo 'Superset is initialized.'"]
     restart: "no"
     networks:
       - superset
@@ -176,7 +176,7 @@ services:
       - .env
     volumes:
       - /volume1/docker/superset/assets:/assets:ro
-    entrypoint: ["bash","-lc","set -euo pipefail; if [ -f /assets/datasources.zip ]; then echo 'Importing datasources from /assets/datasources.zip'; superset import_datasources -p /assets/datasources.zip -u \"${ADMIN_USERNAME:-admin}\"; elif [ -d /assets/datasources ]; then echo 'Importing datasources from /assets/datasources directory'; superset import_datasources -p /assets/datasources -u \"${ADMIN_USERNAME:-admin}\"; else echo 'No datasources.zip or datasources/ found in ./assets - skipping.'; fi"]
+    command: ["bash","-lc","set -euo pipefail; if [ -f /assets/datasources.zip ]; then echo 'Importing datasources from /assets/datasources.zip'; /app/.venv/bin/superset import_datasources -p /assets/datasources.zip -u \"${ADMIN_USERNAME:-admin}\"; elif [ -d /assets/datasources ]; then echo 'Importing datasources from /assets/datasources directory'; /app/.venv/bin/superset import_datasources -p /assets/datasources -u \"${ADMIN_USERNAME:-admin}\"; else echo 'No datasources.zip or datasources/ found in ./assets - skipping.'; fi"]
     restart: "no"
     networks:
       - superset
