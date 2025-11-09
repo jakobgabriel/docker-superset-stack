@@ -1,0 +1,24 @@
+psycopg2-binary
+mysqlclient
+sqlalchemy-bigquery
+snowflake-sqlalchemy
+sqlalchemy-redshift
+redshift-connector
+trino
+pyhive[presto]
+clickhouse-connect>=0.6.8
+pymssql
+# pyodbc  # requires MS ODBC driver installed in the container
+cx_Oracle
+sqlalchemy-cratedb
+databend-sqlalchemy
+couchbase-sqlalchemy
+sqlalchemy-vertica-python
+sqlalchemy-singlestoredb
+sqlalchemy-starrocks
+taospy
+taos-ws-py
+teradatasqlalchemy
+pyathena[sqlalchemy]
+pydynamodb
+

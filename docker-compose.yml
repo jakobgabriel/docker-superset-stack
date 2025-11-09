@@ -1,0 +1,188 @@
+version: "3.9"
+
+x-superset-image: &superset_image superset-custom:${SUPERSET_TAG:-6.0.0}
+
+networks:
+  superset:
+    driver: bridge
+
+volumes:
+  superset_home:
+  superset_db:
+  local_docker_dir:
+
+services:
+  # Build a custom image with MANY database drivers baked-in
+  superset-build:
+    build:
+      context: ./superset-build
+      dockerfile: Dockerfile
+      args:
+        SUPERSET_TAG: ${SUPERSET_TAG:-6.0.0}
+    image: superset-custom:${SUPERSET_TAG:-6.0.0}
+    profiles: ["build"]
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: superset-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-superset}
+      POSTGRES_USER: ${POSTGRES_USER:-superset}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-superset}
+    volumes:
+      - superset_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - superset
+
+  redis:
+    image: redis:7-alpine
+    container_name: superset-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - superset
+
+  superset:
+    image: *superset_image
+    container_name: superset-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      SUPERSET_ENV: production
+      SUPERSET_LOAD_EXAMPLES: ${SUPERSET_LOAD_EXAMPLES:-no}
+      SQLALCHEMY_DATABASE_URI: postgresql+psycopg2://${POSTGRES_USER:-superset}:${POSTGRES_PASSWORD:-superset}@postgres:5432/${POSTGRES_DB:-superset}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MAPBOX_API_KEY: ${MAPBOX_API_KEY:-}
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+    volumes:
+      - superset_home:/app/superset_home
+      - ./superset:/app/pythonpath:ro
+      - ./docker:/app/docker:ro   # optional runtime driver installs
+    ports:
+      - "8088:8088"
+    command: [
+      "bash","-lc",
+      "if [ -f /app/docker/requirements-local.txt ]; then echo 'Installing extra DB drivers...' && uv pip install --system --no-cache -r /app/docker/requirements-local.txt; fi; exec gunicorn -w ${GUNICORN_WORKERS:-4} -k gevent --timeout ${GUNICORN_TIMEOUT:-120} -b 0.0.0.0:8088 'superset.app:create_app()'"
+    ]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - superset
+
+  worker:
+    image: *superset_image
+    container_name: superset-worker
+    depends_on:
+      superset:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      SQLALCHEMY_DATABASE_URI: postgresql+psycopg2://${POSTGRES_USER:-superset}:${POSTGRES_PASSWORD:-superset}@postgres:5432/${POSTGRES_DB:-superset}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    command: [
+      "bash","-lc",
+      "celery --app superset.tasks.celery_app:app worker --pool prefork -O fair -l INFO -Q celery,queries,metadata -c ${CELERY_CONCURRENCY:-4}"
+    ]
+    restart: unless-stopped
+    networks:
+      - superset
+
+  beat:
+    image: *superset_image
+    container_name: superset-beat
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      SQLALCHEMY_DATABASE_URI: postgresql+psycopg2://${POSTGRES_USER:-superset}:${POSTGRES_PASSWORD:-superset}@postgres:5432/${POSTGRES_DB:-superset}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    command: [
+      "bash","-lc",
+      "celery --app superset.tasks.celery_app:app beat -l INFO"
+    ]
+    restart: unless-stopped
+    networks:
+      - superset
+
+  # Optional: dedicated worker with headless browser for Alerts & Reports
+  worker_reports:
+    image: *superset_image
+    container_name: superset-worker-reports
+    depends_on:
+      superset:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      SQLALCHEMY_DATABASE_URI: postgresql+psycopg2://${POSTGRES_USER:-superset}:${POSTGRES_PASSWORD:-superset}@postgres:5432/${POSTGRES_DB:-superset}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    command: [
+      "bash","-lc",
+      "celery --app superset.tasks.celery_app:app worker --pool prefork -O fair -l INFO -Q reports -c ${CELERY_REPORTS_CONCURRENCY:-2}"
+    ]
+    restart: unless-stopped
+    networks:
+      - superset
+
+  init:
+    image: *superset_image
+    container_name: superset-init
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      SQLALCHEMY_DATABASE_URI: postgresql+psycopg2://${POSTGRES_USER:-superset}:${POSTGRES_PASSWORD:-superset}@postgres:5432/${POSTGRES_DB:-superset}
+    entrypoint: ["bash", "-lc", "set -euo pipefail; superset db upgrade; superset fab create-admin --username \"${ADMIN_USERNAME:-admin}\" --firstname \"${ADMIN_FIRST_NAME:-Admin}\" --lastname \"${ADMIN_LAST_NAME:-User}\" --email \"${ADMIN_EMAIL:-admin@superset.local}\" --password \"${ADMIN_PASSWORD:-admin}\" --role Admin --exist-ok; superset init; echo 'Superset is initialized.'"]
+    restart: "no"
+    networks:
+      - superset
+
+  # One-shot importer for multiple databases/datasets via YAML/ZIP
+  import_datasources:
+    image: *superset_image
+    container_name: superset-import-datasources
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    volumes:
+      - ./assets:/assets:ro
+    entrypoint: ["bash","-lc","set -euo pipefail; if [ -f /assets/datasources.zip ]; then echo 'Importing datasources from /assets/datasources.zip'; superset import_datasources -p /assets/datasources.zip -u \"${ADMIN_USERNAME:-admin}\"; elif [ -d /assets/datasources ]; then echo 'Importing datasources from /assets/datasources directory'; superset import_datasources -p /assets/datasources -u \"${ADMIN_USERNAME:-admin}\"; else echo 'No datasources.zip or datasources/ found in ./assets - skipping.'; fi"]
+    restart: "no"
+    networks:
+      - superset

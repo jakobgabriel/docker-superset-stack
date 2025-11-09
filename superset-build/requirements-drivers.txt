@@ -1,0 +1,66 @@
+# Core relational
+psycopg2-binary
+mysqlclient
+pymysql
+duckdb-engine
+
+# Cloud warehouses / big data
+snowflake-connector-python
+snowflake-sqlalchemy
+sqlalchemy-redshift
+redshift-connector
+sqlalchemy-bigquery
+databricks-sql-connector
+sqlalchemy-databricks
+
+# Trino / Presto
+trino
+pyhive[presto]
+
+# Hive/Impala/Spark (Hive dialect path)
+pyhive[hive]
+impyla
+thrift
+thrift_sasl
+sasl
+
+# ClickHouse
+clickhouse-connect>=0.6.8
+clickhouse-sqlalchemy
+
+# Microsoft SQL Server
+pymssql
+pyodbc
+
+# Oracle
+cx_Oracle
+
+# IBM DB2
+ibm-db
+ibm-db-sa
+
+# Vertica / Exasol
+sqlalchemy-vertica-python
+pyexasol
+sqlalchemy-exasol
+
+# Druid / Pinot / Solr / Drill / Kylin / Doris
+pydruid
+pinotdb
+sqlalchemy-solr
+sqlalchemy-drill
+kylinpy
+sqlalchemy-doris
+
+# Athena / DynamoDB
+pyathena[sqlalchemy]
+pydynamodb
+
+# Other engines frequently used
+sqlalchemy-cratedb
+couchbase-sqlalchemy
+databend-sqlalchemy
+sqlalchemy-singlestoredb
+sqlalchemy-starrocks
+teradatasqlalchemy
+
