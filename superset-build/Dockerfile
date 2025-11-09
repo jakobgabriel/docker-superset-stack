@@ -1,5 +1,5 @@
-# Build an image with MANY DB drivers (Superset 6.0.0)
-ARG SUPERSET_TAG=6.0.0
+# Build an image with MANY DB drivers (Superset)
+ARG SUPERSET_TAG=latest
 FROM apache/superset:${SUPERSET_TAG}
 
 USER root
@@ -32,4 +32,3 @@ RUN . /app/.venv/bin/activate \
  && PLAYWRIGHT_BROWSERS_PATH=/usr/local/share/playwright-browsers playwright install chromium || true
 
 USER superset
-
