@@ -17,12 +17,14 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
     volumes:
       - superset_home:/app/superset_home
-      - ./docker/requirements-local.txt:/app/docker/requirements-local.txt:ro
     ports:
       - "8088:8088"
     command: >
       bash -lc "set -euo pipefail;
-      if [ -f /app/docker/requirements-local.txt ]; then echo 'Installing extra DB drivers...'; (uv pip install --system --no-cache -r /app/docker/requirements-local.txt || pip install --no-cache-dir -r /app/docker/requirements-local.txt); fi;
+      # Optional extra drivers if present in image path
+      if [ -f /app/docker/requirements-local.txt ]; then echo 'Installing extra DB drivers...'; (uv pip install --system --no-cache -r /app/docker/requirements-local.txt || /app/.venv/bin/pip install --no-cache-dir -r /app/docker/requirements-local.txt); fi;
+      # Ensure Pillow is available for screenshots/PDF without needing a host bind mount
+      /app/.venv/bin/pip install --no-cache-dir pillow;
       /app/.venv/bin/superset db upgrade;
       /app/.venv/bin/superset fab create-admin --username \"${ADMIN_USERNAME}\" --firstname \"${ADMIN_FIRST_NAME}\" --lastname \"${ADMIN_LAST_NAME}\" --email \"${ADMIN_EMAIL}\" --password \"${ADMIN_PASSWORD}\" --exist-ok;
       /app/.venv/bin/superset init;
