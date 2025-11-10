@@ -17,13 +17,6 @@ sqlalchemy-databricks
 trino
 pyhive[presto]
 
-# Hive/Impala/Spark (Hive dialect path)
-pyhive[hive]
-impyla
-thrift
-thrift_sasl
-sasl
-
 # ClickHouse
 clickhouse-connect>=0.6.8
 clickhouse-sqlalchemy
@@ -31,13 +24,6 @@ clickhouse-sqlalchemy
 # Microsoft SQL Server
 pymssql
 pyodbc
-
-# Oracle
-cx_Oracle
-
-# IBM DB2
-ibm-db
-ibm-db-sa
 
 # Vertica / Exasol
 sqlalchemy-vertica-python
@@ -63,4 +49,3 @@ databend-sqlalchemy
 sqlalchemy-singlestoredb
 sqlalchemy-starrocks
 teradatasqlalchemy
-
